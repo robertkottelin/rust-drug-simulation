@@ -39,6 +39,7 @@ fn main() {
         ],
     };
 
+
     let mut water2 = Molecule {
         atoms: vec![
             Atom { id: 4, position: Vector3::new(2.0, 2.0, 2.0), velocity: Vector3::new(0.0, 0.0, 0.0), mass: 1.0 },
