@@ -71,7 +71,7 @@ fn main() {
     }
 
     // Print out the final states of the atoms
-    println!("Final states:");
+    println!("Final states are:");
     println!("Water 1: {:?}", water1);
     println!("Water 2: {:?}", water2);
     // Create a new file
