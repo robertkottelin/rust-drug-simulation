@@ -44,7 +44,7 @@ impl Electron {
     fn random_position(&self) -> Vec2 {
         let mut rng = thread_rng();
         let angle = rng.gen_range(0.0..2.0 * std::f32::consts::PI);
-        let radius_variation = rng.gen_range(-10.0..10.0); // Adjust the range for more/less variation
+        let radius_variation = rng.gen_range(-10.0..10.0); 
         let radius = self.orbit_radius + radius_variation;
 
         Vec2::new(
