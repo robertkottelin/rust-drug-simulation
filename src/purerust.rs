@@ -84,11 +84,12 @@ impl Electron {
 
 const STRONG_FORCE_DISTANCE: f32 = 25.0;
 
-fn distance(pos1: Vec2, pos2: Vec2) -> f32 {
+fn distance(pos1: &Vec2, pos2: &Vec2) -> f32 {
     let dx = pos1.x - pos2.x;
     let dy = pos1.y - pos2.y;
     (dx * dx + dy * dy).sqrt()
 }
+
 
 fn main() {
     let mut protons = vec![Proton::new(100.0, 100.0, 10.0, 10.0)];
@@ -99,7 +100,8 @@ fn main() {
     // In a real application, this would be in a loop
     for proton in &mut protons {
         for neutron in &mut neutrons {
-            let dist = distance(proton.position, neutron.position);
+            // Pass references to the position fields
+            let dist = distance(&proton.position, &neutron.position);
             if dist < STRONG_FORCE_DISTANCE {
                 proton.vibration_amplitude *= 0.9;
                 neutron.vibration_amplitude *= 0.9;
@@ -121,4 +123,5 @@ fn main() {
         // Normally, you would draw here, but we're skipping that
     }
 
+    // More logic can be added here as needed
 }

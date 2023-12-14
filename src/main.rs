@@ -1,127 +1,64 @@
-use rand::Rng;
-use std::f32::consts::PI;
+use amethyst::{
+    core::{timing::Time, transform::TransformBundle},
+    prelude::*,
+    renderer::{
+        plugins::{RenderFlat2D, RenderToWindow},
+        types::DefaultBackend,
+        RenderingBundle,
+    },
+    utils::application_root_dir,
+    window::WindowBundle,
+};
+use nphysics3d::{
+    object::{Body, RigidBodyDesc},
+    world::World,
+};
 
-struct Vec2 {
-    x: f32,
-    y: f32,
+struct Physics {
+    world: World<f32>,
 }
 
-struct Proton {
-    position: Vec2,
-    radius: f32,
-    vibration_amplitude: f32,
-    charge: f32,
-}
-
-impl Proton {
-    fn new(x: f32, y: f32, radius: f32, vibration_amplitude: f32) -> Self {
-        Proton {
-            position: Vec2 { x, y },
-            radius,
-            vibration_amplitude,
-            charge: 1.0,
-        }
-    }
-
-    fn update(&mut self) {
-        let mut rng = rand::thread_rng();
-        self.position.x += rng.gen_range(-self.vibration_amplitude..self.vibration_amplitude);
-        self.position.y += rng.gen_range(-self.vibration_amplitude..self.vibration_amplitude);
+impl Default for Physics {
+    fn default() -> Self {
+        let mut world = World::new();
+        world.set_gravity(nalgebra::Vector3::new(0.0, -9.81, 0.0));
+        Physics { world }
     }
 }
 
-struct Neutron {
-    position: Vec2,
-    radius: f32,
-    vibration_amplitude: f32,
-    charge: f32,
-}
-
-impl Neutron {
-    fn new(x: f32, y: f32, radius: f32, vibration_amplitude: f32) -> Self {
-        Neutron {
-            position: Vec2 { x, y },
-            radius,
-            vibration_amplitude,
-            charge: 0.0,
-        }
+impl SimpleState for Physics {
+    fn on_start(&mut self, _data: StateData<'_, GameData<'_, '_>>) {
+        // Create a simple physical object
+        let rigid_body = RigidBodyDesc::new()
+            .gravity_enabled(true)
+            .build();
+        self.world.add_rigid_body(rigid_body);
     }
 
-    fn update(&mut self) {
-        let mut rng = rand::thread_rng();
-        self.position.x += rng.gen_range(-self.vibration_amplitude..self.vibration_amplitude);
-        self.position.y += rng.gen_range(-self.vibration_amplitude..self.vibration_amplitude);
+    fn update(&mut self, state_data: &mut StateData<'_, GameData<'_, '_>>) -> SimpleTrans {
+        self.world.step();
+        Trans::None
     }
 }
 
-struct Electron {
-    orbit_center: Vec2,
-    orbit_radius: f32,
-    charge: f32,
-}
+fn main() -> amethyst::Result<()> {
+    amethyst::start_logger(Default::default());
+    let app_root = application_root_dir()?;
+    let display_config_path = app_root.join("config/display.ron");
 
-impl Electron {
-    fn new(orbit_center: Vec2, orbit_radius: f32) -> Self {
-        Electron {
-            orbit_center,
-            orbit_radius,
-            charge: -1.0,
-        }
-    }
-
-    fn random_position(&self) -> Vec2 {
-        let mut rng = rand::thread_rng();
-        let angle = rng.gen_range(0.0..2.0 * PI);
-        let radius_variation = rng.gen_range(-10.0..10.0); 
-        let radius = self.orbit_radius + radius_variation;
-
-        Vec2 {
-            x: self.orbit_center.x + radius * angle.cos(),
-            y: self.orbit_center.y + radius * angle.sin(),
-        }
-    }
-}
-
-const STRONG_FORCE_DISTANCE: f32 = 25.0;
-
-fn distance(pos1: &Vec2, pos2: &Vec2) -> f32 {
-    let dx = pos1.x - pos2.x;
-    let dy = pos1.y - pos2.y;
-    (dx * dx + dy * dy).sqrt()
-}
-
-
-fn main() {
-    let mut protons = vec![Proton::new(100.0, 100.0, 10.0, 10.0)];
-    let mut neutrons = vec![Neutron::new(100.0, 100.0, 10.0, 10.0)];
-    let electrons = vec![Electron::new(Vec2 { x: 100.0, y: 100.0 }, 50.0)];
-
-    // Main loop logic (example of one iteration)
-    // In a real application, this would be in a loop
-    for proton in &mut protons {
-        for neutron in &mut neutrons {
-            // Pass references to the position fields
-            let dist = distance(&proton.position, &neutron.position);
-            if dist < STRONG_FORCE_DISTANCE {
-                proton.vibration_amplitude *= 0.9;
-                neutron.vibration_amplitude *= 0.9;
-            }
-        }
-    }
-
-    for proton in &mut protons {
-        proton.update();
-    }
-
-    for neutron in &mut neutrons {
-        neutron.update();
-    }
-
-    // Electron positions can be calculated, but not drawn
-    for electron in &electrons {
-        let _electron_pos = electron.random_position();
-        // Normally, you would draw here, but we're skipping that
-    }
-
-    // More logic can be added here as needed
+    let game_data = GameDataBuilder::default()
+        .with_bundle(
+            WindowBundle::from_config_path(display_config_path),
+        )?
+        .with_bundle(TransformBundle::new())?
+        .with_bundle(
+            RenderingBundle::<DefaultBackend>::new()
+                .with_plugin(
+                    RenderToWindow::from_config_path(display_config_path).with_clear([0.34, 0.36, 0.52, 1.0]),
+                )
+                .with_plugin(RenderFlat2D::default()),
+        )?;
+    let mut game = Application::new(app_root, Physics::default(), game_data)?;
+    game.run();
+    Ok(())
 }
