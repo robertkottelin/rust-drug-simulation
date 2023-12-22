@@ -1,17 +1,23 @@
-use macroquad::prelude::*;
-use ::rand::*;
-    
+use rand::Rng;
+use std::f32::consts::PI;
+
+struct Vec3 {
+    x: f32,
+    y: f32,
+    z: f32,
+}
+
 struct Proton {
-    position: Vec2,
+    position: Vec3,
     radius: f32,
     vibration_amplitude: f32,
     charge: f32,
 }
 
 impl Proton {
-    fn new(x: f32, y: f32, radius: f32, vibration_amplitude: f32) -> Self {
+    fn new(x: f32, y: f32, z: f32, radius: f32, vibration_amplitude: f32) -> Self {
         Proton {
-            position: vec2(x, y),
+            position: Vec3 { x, y, z},
             radius,
             vibration_amplitude,
             charge: 1.0,
@@ -19,28 +25,23 @@ impl Proton {
     }
 
     fn update(&mut self) {
-        // Randomly vibrate the proton within a small range
-        let mut rng = thread_rng();
+        let mut rng = rand::thread_rng();
         self.position.x += rng.gen_range(-self.vibration_amplitude..self.vibration_amplitude);
         self.position.y += rng.gen_range(-self.vibration_amplitude..self.vibration_amplitude);
-    }
-
-    fn draw(&self) {
-        draw_circle(self.position.x, self.position.y, self.radius, RED);
     }
 }
 
 struct Neutron {
-    position: Vec2,
+    position: Vec3,
     radius: f32,
     vibration_amplitude: f32,
     charge: f32,
 }
 
 impl Neutron {
-    fn new(x: f32, y: f32, radius: f32, vibration_amplitude: f32) -> Self {
+    fn new(x: f32, y: f32, z: f32, radius: f32, vibration_amplitude: f32) -> Self {
         Neutron {
-            position: vec2(x, y),
+            position: Vec3 { x, y, z },
             radius,
             vibration_amplitude,
             charge: 0.0,
@@ -48,25 +49,20 @@ impl Neutron {
     }
 
     fn update(&mut self) {
-        // Randomly vibrate the neutron within a small range
-        let mut rng = thread_rng();
+        let mut rng = rand::thread_rng();
         self.position.x += rng.gen_range(-self.vibration_amplitude..self.vibration_amplitude);
         self.position.y += rng.gen_range(-self.vibration_amplitude..self.vibration_amplitude);
-    }
-
-    fn draw(&self) {
-        draw_circle(self.position.x, self.position.y, self.radius, GREEN);
     }
 }
 
 struct Electron {
-    orbit_center: Vec2,
+    orbit_center: Vec3,
     orbit_radius: f32,
     charge: f32,
 }
 
 impl Electron {
-    fn new(orbit_center: Vec2, orbit_radius: f32) -> Self {
+    fn new(orbit_center: Vec3, orbit_radius: f32) -> Self {
         Electron {
             orbit_center,
             orbit_radius,
@@ -74,79 +70,66 @@ impl Electron {
         }
     }
 
-    fn random_position(&self) -> Vec2 {
-        let mut rng = thread_rng();
-        let angle = rng.gen_range(0.0..2.0 * std::f32::consts::PI);
+    fn random_position(&self) -> Vec3 {
+        let mut rng = rand::thread_rng();
+        let angle = rng.gen_range(0.0..2.0 * PI);
         let radius_variation = rng.gen_range(-10.0..10.0); 
         let radius = self.orbit_radius + radius_variation;
+        let z_variation = rng.gen_range(-10.0..10.0);
 
-        Vec2::new(
-            self.orbit_center.x + radius * angle.cos(),
-            self.orbit_center.y + radius * angle.sin(),
-        )
-    }
-
-    fn draw(&self) {
-        let electron_pos = self.random_position();
-        draw_circle(electron_pos.x, electron_pos.y, 5.0, BLUE);
+        Vec3 {
+            x: self.orbit_center.x + radius * angle.cos(),
+            y: self.orbit_center.y + radius * angle.sin(),
+            z: self.orbit_center.z + z_variation,
+        }
     }
 }
 
 const STRONG_FORCE_DISTANCE: f32 = 25.0;
 
-// Add a function to calculate the distance between two particles
-fn distance(pos1: Vec2, pos2: Vec2) -> f32 {
-    (pos1 - pos2).length()
+fn distance(pos1: &Vec3, pos2: &Vec3) -> f32 {
+    let dx = pos1.x - pos2.x;
+    let dy = pos1.y - pos2.y;
+    let dz = pos1.z - pos2.z;
+    (dx * dx + dy * dy + dz * dz).sqrt()
 }
 
-#[macroquad::main("Particles")]
-async fn main() {
-    let mut protons = Vec::new();
-    let mut neutrons = Vec::new();
-    let mut electrons = Vec::new();
 
-    for _ in 0..2 {
-        protons.push(Proton::new(100.0, 100.0, 6.0, 10.0));
-    }
+fn main() {
+    let x = 100.0;
+    let y = 100.0;
+    let z = 100.0;
+    let radius = 50.0;
+    let vibration_amplitude = 10.0; // Example value for vibration amplitude
 
-    for _ in 0..2 {
-        neutrons.push(Neutron::new(100.0, 100.0, 6.0, 10.0));
-    }
+    let mut protons = vec![Proton::new(x, y, z, radius, vibration_amplitude)];
+    let mut neutrons = vec![Neutron::new(x, y, z, radius, vibration_amplitude)];
+    let mut electrons = vec![Electron::new(Vec3 { x, y, z }, 50.0)];
 
-    for _ in 0..1 {
-        electrons.push(Electron::new(vec2(100.0, 100.0), 50.0));
-    }
-
-    loop {
-        clear_background(BLACK);
-
-        // Apply strong nuclear force
-        for proton in &mut protons {
-            for neutron in &mut neutrons {
-                let dist = distance(proton.position, neutron.position);
-                if dist < STRONG_FORCE_DISTANCE {
-                    // Simulate strong force by reducing the vibration amplitude
-                    proton.vibration_amplitude *= 0.9;
-                    neutron.vibration_amplitude *= 0.9;
-                }
+    // Main loop logic (example of one iteration)
+    // In a real application, this would be in a loop
+    for proton in &mut protons {
+        for neutron in &mut neutrons {
+            // Pass references to the position fields
+            let dist = distance(&proton.position, &neutron.position);
+            if dist < STRONG_FORCE_DISTANCE {
+                proton.vibration_amplitude *= 0.9;
+                neutron.vibration_amplitude *= 0.9;
             }
         }
+    }
 
-        // Update and draw protons and neutrons
-        for proton in &mut protons {
-            proton.update();
-            proton.draw();
-        }
+    for proton in &mut protons {
+        proton.update();
+    }
 
-        for neutron in &mut neutrons {
-            neutron.update();
-            neutron.draw();
-        }
+    for neutron in &mut neutrons {
+        neutron.update();
+    }
 
-        for electron in &electrons {
-            electron.draw();
-        }
-
-        next_frame().await
+    // Electron positions can be calculated, but not drawn
+    for electron in &electrons {
+        let _electron_pos = electron.random_position();
+        // Normally, you would draw here, but we're skipping that
     }
 }
